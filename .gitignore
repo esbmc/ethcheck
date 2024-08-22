@@ -1,0 +1,10 @@
+build/
+consensus-specs/
+dist/
+ethcheck.egg-info/
+ethcheck_env/
+*.patch
+__pycache__/
+testcase.xml
+metadata.xml
+test_consensus_*
