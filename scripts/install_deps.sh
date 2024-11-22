@@ -15,7 +15,7 @@ fi
 
 if ! is_package_installed python3-venv; then
     echo -e "\n# Installing python3-venv"
-    sudo apt install -y python3-venv
+    sudo apt install -y python3-venv python3-pip
 fi
 
 ESBMC_MD5="618f1fd89c399102865f9e366d164cb6"
@@ -44,6 +44,7 @@ pushd consensus-specs/
 git checkout $CONSENSUS_RELEASE
 
 # Install dependencies
+pip install setuptools
 pip install colorama
 pip install ast2json
 pip install pytest

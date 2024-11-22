@@ -7,6 +7,8 @@ EthCheck is currently supported on **Linux**.
 
 ### 1. Install dependencies
 ```bash
+sudo apt update
+sudo apt install -y python3-venv python3-pip git-lfs
 ./scripts/install_deps.sh
 ```
 ### 2. Activate the Virtual Environment
