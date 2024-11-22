@@ -9,16 +9,19 @@ is_package_installed() {
 
 # Check if git-lfs is installed
 if ! is_package_installed git-lfs; then
-    echo "git-lfs is not installed. Installing..."
+    echo -e "# Installing git-lfs package"
     sudo apt install -y git-lfs
 fi
 
-if ! is_package_installed python3.10-venv; then
-    echo "python3.10-venv is not installed. Installing..."
-    sudo apt install -y python3.10-venv
+if ! is_package_installed python3-venv; then
+    echo -e "\n# Installing python3-venv"
+    sudo apt install -y python3-venv
 fi
 
-if [ ! -f "bin/esbmc" ]; then
+ESBMC_MD5="618f1fd89c399102865f9e366d164cb6"
+
+if [ ! -f "bin/esbmc" ] || [ "$(md5sum bin/esbmc | awk '{ print $1 }')" != "$ESBMC_MD5" ]; then
+  echo -e "\n#Downloading ESBMC"
   git lfs install
   git lfs pull
   chmod +x bin/esbmc
