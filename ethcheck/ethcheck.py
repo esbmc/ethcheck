@@ -61,7 +61,7 @@ def verify_function(func, command):
     full_cmd = command + ['--function', func]
     try:
         # Execute ESBMC in a child process
-        subprocess.run(full_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=3)
+        subprocess.run(full_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10)
         print(Fore.GREEN + f"{func} ✓")
 
     except subprocess.TimeoutExpired:
