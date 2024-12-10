@@ -2,20 +2,36 @@
 
 CONSENSUS_RELEASE="v1.5.0-alpha.4"
 
-# Function to check if a package is installed
-is_package_installed() {
-    dpkg -s "$1" &>/dev/null
-}
-
 # Check if git-lfs is installed
-if ! is_package_installed git-lfs; then
-    echo -e "# Installing git-lfs package"
-    sudo apt install -y git-lfs
+if which git-lfs &> /dev/null; then
+    echo -e "git-lfs is already installed"
+else
+    echo -e "ERROR: You need to install the git-lfs package, for example via:"
+    echo -e "sudo apt install -y git-lfs"
+    exit 1
 fi
 
-if ! is_package_installed python3-venv; then
-    echo -e "\n# Installing python3-venv"
-    sudo apt install -y python3-venv python3-pip
+if which python3 &> /dev/null; then
+    echo -e "python is already installed"
+else
+    echo -e "ERROR: You need to install python3 package, for example via:"
+    echo -e "sudo apt install -y python3-venv python3-pip"
+    exit 1
+fi
+
+if which pip3 &> /dev/null; then
+    echo -e "pip3 is already installed"
+else
+    echo -e "ERROR: You need to install python3 package, for example via:"
+    echo -e "sudo apt install -y python3-pip"
+    exit 1
+fi
+
+venv_installed=$(python -m venv --help | grep usage)
+if [[ -n "$venv_installed" ]]; then
+    echo "Python venv package is installed."
+else
+    echo "Python venv package is not installed."
 fi
 
 ESBMC_MD5="618f1fd89c399102865f9e366d164cb6"
