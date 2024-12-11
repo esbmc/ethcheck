@@ -1,13 +1,11 @@
 # EthCheck
 
-EthCheck is a command-line tool for verifying the Ethereum [Consensus Specification](https://github.com/ethereum/consensus-specs) using the [ESBMC](https://github.com/esbmc/esbmc) model checker.
-
-## Architecture
-
-EthCheck verifies the Consensus Specifications (https://github.com/ethereum/consensus-specs) in Python automatically. Ethcheck runner includes:
+EthCheck is a command-line tool for verifying the Ethereum [Consensus Specification](https://github.com/ethereum/consensus-specs) using the [ESBMC](https://github.com/esbmc/esbmc) model checker. EthCheck runner includes:
 - Automatically generating test cases for each detected issue;
 - Executing these tests against eth2spec for confirmation;
 - A comprehensive pip package with detailed documentation.
+
+## Architecture
 
 Figure 1 illustrates the EthCheck architecture.
 
