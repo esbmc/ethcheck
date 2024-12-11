@@ -9,7 +9,7 @@ EthCheck is a command-line tool for testing and verifying the Ethereum [Consensu
 
 The figure illustrates the EthCheck architecture.
 
-![image](https://github.com/user-attachments/assets/1ca2c021-a236-4769-b9fe-2d9830bfaf45)
+![image](https://github.com/user-attachments/assets/97a4e08f-b139-4135-a44d-206c6aa84d41)
 
 ## Installation
 EthCheck is currently supported on **Linux**.
