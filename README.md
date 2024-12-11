@@ -48,3 +48,8 @@ ethcheck --deneb
 Git hash: 1dffbe270c </br>
 Git tag: consensus-v1 </br>
 MD5: 618f1fd89c399102865f9e366d164cb6 </br>
+
+## Acknowledgment
+
+We thank the [Ethereum Foundation](https://www.linkedin.com/company/ethereum-foundation/) for supporting our research team on this project.
+
