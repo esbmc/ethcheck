@@ -6,7 +6,7 @@ setup(
     description="A Python tool for verifying Ethereum Consensus Specification using ESBMC",
     author="Bruno Farias",
     author_email="brunocarvalhofarias@gmail.com",
-    url="https://github.com/brcfarias/ethcheck",
+    url="https://github.com/esbmc/ethcheck",
     packages=find_packages(),
     install_requires=[
         'colorama',
