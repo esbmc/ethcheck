@@ -13,14 +13,16 @@ import subprocess
 import ast
 import pkg_resources
 import argparse
-
+import generate_pytest
 
 def get_file_path(module_name):
     mainnet_file = 'mainnet.py'
     spec_file = 'spec.py'
     resource_path = pkg_resources.resource_filename(module_name, mainnet_file)
+    generate_pytest.module_name = 'mainnet'
     if not os.path.exists(resource_path):
         resource_path = pkg_resources.resource_filename(module_name, spec_file)
+        generate_pytest.module_name = 'spec'
     return resource_path
 
 def get_esbmc_path():
@@ -133,6 +135,7 @@ def main():
             print(f"Error: Fork '{args.fork}' not found.\nAvailable forks: {', '.join(forks)}")
             sys.exit(1)
         python_file = get_file_path(f'eth2spec.{args.fork}')
+        generate_pytest.fork_name = args.fork
     elif args.file:
         python_file = args.file
     else:

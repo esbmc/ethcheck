@@ -6,7 +6,7 @@ long_description = (this_directory / "pip-description.md").read_text()
 
 setup(
     name="ethcheck",
-    version="0.1.2",
+    version="0.1.4",
     description="A Python tool for verifying Ethereum Consensus Specification using ESBMC",
     long_description=long_description,
     long_description_content_type='text/markdown',
