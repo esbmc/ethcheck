@@ -15,13 +15,20 @@ import pkg_resources
 import argparse
 
 
-def get_file_path(module_name, file_name):
+def get_file_path(module_name):
+    mainnet_file = 'mainnet.py'
+    spec_file = 'spec.py'
     try:
-        resource_path = pkg_resources.resource_filename(module_name, file_name)
+        resource_path = pkg_resources.resource_filename(module_name, mainnet_file)
         return resource_path
     except FileNotFoundError:
-        print(f"File {file_name} not found in module {module_name}")
-        return None
+        print(f"File {mainnet_file} not found in module {module_name}, trying {spec_file} as fallback...")
+        try:
+            resource_path = pkg_resources.resource_filename(module_name, spec_file)
+            return resource_path
+        except FileNotFoundError:
+            print(f"Fallback file {spec_file} also not found in module {module_name}")
+            return None
 
 def get_esbmc_path():
     return os.path.join(os.path.dirname(sys.executable), 'esbmc')
@@ -112,9 +119,9 @@ def verify_function(func, command):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--deneb', action='store_true', help='Verify deneb fork')
     parser.add_argument('--file', type=str, help='Verify a specific file')
     parser.add_argument('--list-forks', action='store_true', help='List available forks')
+    parser.add_argument('--fork', type=str, help='Verify a specific fork')
 
     args = parser.parse_args()
 
@@ -127,8 +134,12 @@ def main():
             print("No forks found.")
         return  # Exit after listing forks
 
-    if args.deneb:
-        python_file = get_file_path('eth2spec.deneb', 'mainnet.py')
+    if args.fork:
+        forks = list_forks()
+        if args.fork not in forks:
+            print(f"Error: Fork '{args.fork}' not found.\nAvailable forks: {', '.join(forks)}")
+            sys.exit(1)
+        python_file = get_file_path(f'eth2spec.{args.fork}')
     elif args.file:
         python_file = args.file
     else:
