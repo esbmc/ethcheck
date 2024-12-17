@@ -8,6 +8,7 @@ if current_dir not in sys.path:
 
 from colorama import Fore, Style
 from generate_pytest import generate_python_script
+from list_forks import list_forks
 import subprocess
 import ast
 import pkg_resources
@@ -113,8 +114,18 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--deneb', action='store_true', help='Verify deneb fork')
     parser.add_argument('--file', type=str, help='Verify a specific file')
+    parser.add_argument('--list-forks', action='store_true', help='List available forks')
 
     args = parser.parse_args()
+
+    if args.list_forks:
+        # Call list_forks and print the list
+        forks = list_forks()
+        if forks:
+            print("Available forks:", ", ".join(forks))
+        else:
+            print("No forks found.")
+        return  # Exit after listing forks
 
     if args.deneb:
         python_file = get_file_path('eth2spec.deneb', 'mainnet.py')
