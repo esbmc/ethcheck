@@ -4,7 +4,7 @@ EthCheck is a command-line tool for testing and verifying the Ethereum [Consensu
 - Verification of individual functions across all available forks;
 - Automatic generation of test cases for each detected issue;
 - Execution of these tests against [eth2spec](https://pypi.org/project/eth2spec/) to confirm results;
-- Availability as a [pip package](https://pypi.org/project/ethcheck/0.1.0/) for easy installation.
+
 
 ## Architecture
 
@@ -15,24 +15,24 @@ The figure bellow illustrates the EthCheck architecture.
 ## Installation
 EthCheck is currently supported on **Linux**.
 
-### 1. Install dependencies
+
 ```bash
 sudo apt update
 sudo apt install -y python3-venv python3-pip git-lfs
-./scripts/install_deps.sh
-```
-### 2. Activate the Virtual Environment
-Activate the Python virtual environment created during the step above.
-```
-source ethcheck_env/bin/activate
-```
-### 3. Install EthCheck
-```
-pip install .
+pip install eth2spec
+pip install ethcheck
 ```
 
+
 ## Usage
-**Important**: Ensure the virtual environment is active by running the command ```source ethcheck_env/bin/activate``` before using EthCheck. The terminal should display **\<ethcheck_env\>** if the environment is active.
+**Important**: Ensure the virtual environment is active by running the command below:
+
+```
+python3 -m venv ethcheck_env
+source ethcheck_env/bin/activate
+```
+
+The terminal should display **\<ethcheck_env\>** if the environment is active.
 
 ### Verify a specific file
 ```
@@ -48,14 +48,3 @@ ethcheck --list-forks
 ```
 ethcheck --fork <fork-name>
 ```
-
-
-## ESBMC version
-Git hash: 1dffbe270c </br>
-Git tag: consensus-v1 </br>
-MD5: 618f1fd89c399102865f9e366d164cb6 </br>
-
-## Acknowledgment
-
-We thank the [Ethereum Foundation](https://www.linkedin.com/company/ethereum-foundation/) for supporting our research team on this project.
-
