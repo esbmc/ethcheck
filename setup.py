@@ -18,6 +18,7 @@ setup(
         'colorama',
         'pytest',
         'ast2json',
+        'setuptools',
         # List other dependencies here
     ],
     classifiers=[
