@@ -18,17 +18,10 @@ import argparse
 def get_file_path(module_name):
     mainnet_file = 'mainnet.py'
     spec_file = 'spec.py'
-    try:
-        resource_path = pkg_resources.resource_filename(module_name, mainnet_file)
-        return resource_path
-    except FileNotFoundError:
-        print(f"File {mainnet_file} not found in module {module_name}, trying {spec_file} as fallback...")
-        try:
-            resource_path = pkg_resources.resource_filename(module_name, spec_file)
-            return resource_path
-        except FileNotFoundError:
-            print(f"Fallback file {spec_file} also not found in module {module_name}")
-            return None
+    resource_path = pkg_resources.resource_filename(module_name, mainnet_file)
+    if not os.path.exists(resource_path):
+        resource_path = pkg_resources.resource_filename(module_name, spec_file)
+    return resource_path
 
 def get_esbmc_path():
     return os.path.join(os.path.dirname(sys.executable), 'esbmc')
