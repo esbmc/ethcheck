@@ -38,10 +38,16 @@ pip install .
 ethcheck --file ethcheck/spec.py
 ```
 
-### Verify the Deneb fork specification
+### List available forks
 ```
-ethcheck --deneb
+ethcheck --list-forks
 ```
+
+### Verify a specific fork
+```
+ethcheck --fork <fork-name>
+```
+
 
 ## ESBMC version
 Git hash: 1dffbe270c </br>
