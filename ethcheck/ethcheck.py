@@ -111,12 +111,14 @@ def verify_function(func, command):
             print(e.stdout)
             if os.path.isfile("testcase.xml"):
               os.remove("testcase.xml")
+            sys.exit(3)
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--file', type=str, help='Verify a specific file')
     parser.add_argument('--list-forks', action='store_true', help='List available forks')
     parser.add_argument('--fork', type=str, help='Verify a specific fork')
+    parser.add_argument('--function', type=str, help='Verify a specific function')
 
     args = parser.parse_args()
 
@@ -145,15 +147,24 @@ def main():
         print("File not found:", python_file)
         sys.exit(2)
 
+    python_function = None
+    if args.function:
+        python_function = args.function
+
     print_banner();
     print(f"Verifying file: {python_file}\n")
 
     #command = [get_esbmc_path(), '--incremental-bmc', '--compact-trace', '--unsigned-overflow-check', '--generate-test', python_file]
     command = [get_esbmc_path(), '--incremental-bmc', '--compact-trace', '--generate-test', python_file]
-    function_list = get_function_names(python_file)
 
-    for func in function_list:
-        verify_function(func, command)
+    # Verify a single function
+    if python_function:
+        verify_function(python_function, command)
+    else:
+    # Verify all functions
+        function_list = get_function_names(python_file)
+        for func in function_list:
+            verify_function(func, command)
 
     # clean temporary files
     for d in os.listdir("/tmp"):
