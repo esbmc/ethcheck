@@ -9,6 +9,7 @@ tests never import colorama/pkg_resources/generate_pytest -- a missing runtime
 dependency cannot break classification testing at collection time.
 """
 from ethcheck.classify import classify_esbmc_output, get_esbmc_error, get_counterexample
+from ethcheck.ethcheck import summarize, exit_code_for
 
 SUCCESS = "Solving with solver\nVERIFICATION SUCCESSFUL\n"
 FAILED = "[Counterexample]\nState 1 ...\nVERIFICATION FAILED\nBug found (k = 1)\n"
@@ -65,3 +66,29 @@ def test_get_esbmc_error_returns_first_error_line():
 
 def test_get_esbmc_error_without_error_line_is_generic():
     assert get_esbmc_error(SUCCESS) == "ESBMC produced no verdict"
+
+
+def test_summarize_counts_every_status():
+    counts = summarize(['success', 'success', 'failed', 'error', 'timeout', 'error'])
+    assert counts == {'success': 2, 'failed': 1, 'error': 2, 'timeout': 1}
+
+
+def test_exit_code_counterexample_dominates():
+    assert exit_code_for(summarize(['success', 'error', 'failed'])) == 3
+
+
+def test_exit_code_errors_or_timeouts_without_counterexample():
+    assert exit_code_for(summarize(['success', 'error'])) == 5
+    assert exit_code_for(summarize(['success', 'timeout'])) == 5
+
+
+def test_exit_code_all_success_is_zero():
+    assert exit_code_for(summarize(['success', 'success'])) == 0
+
+
+def test_exit_code_counterexample_dominates_timeout():
+    assert exit_code_for(summarize(['failed', 'timeout'])) == 3
+
+
+def test_exit_code_empty_results_is_zero():
+    assert exit_code_for(summarize([])) == 0
