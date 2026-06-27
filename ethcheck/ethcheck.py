@@ -73,12 +73,31 @@ def get_function_names(file_path):
         tree = ast.parse(file.read())
     return [node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
 
-def get_counterexample(std_err):
+def get_counterexample(output):
     start_marker = "[Counterexample]"
     end_marker = "VERIFICATION FAILED"
-    start_index = std_err.find(start_marker)
-    end_index = std_err.find(end_marker)
-    return std_err[start_index:end_index].strip() if start_index != -1 and end_index != -1 else ""
+    start_index = output.find(start_marker)
+    end_index = output.find(end_marker)
+    return output[start_index:end_index].strip() if start_index != -1 and end_index != -1 else ""
+
+def classify_esbmc_output(output):
+    # Classify on ESBMC's verdict text, not the process exit code: ESBMC exits
+    # non-zero both for a real counterexample and for an error (parse/type
+    # error, unsupported construct, internal limitation) that never reaches a
+    # verdict. The two cases must not be conflated. Check FAILED first so a
+    # counterexample is never masked if both markers ever co-occur -- a bug
+    # finder must fail safe toward reporting the violation.
+    if "VERIFICATION FAILED" in output:
+        return "failed"
+    if "VERIFICATION SUCCESSFUL" in output:
+        return "success"
+    return "error"
+
+def get_esbmc_error(output):
+    for line in output.splitlines():
+        if line.startswith("ERROR:"):
+            return line.strip()
+    return "ESBMC produced no verdict"
 
 def print_esbmc_output(func, cmd, output):
     if func:
@@ -100,54 +119,64 @@ def verify_function(func, command):
     full_cmd = command + ['--function', func]
     try:
         # Execute ESBMC in a child process
-        subprocess.run(full_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10)
-        print(Fore.GREEN + f"{func} ✓")
-
+        result = subprocess.run(full_cmd, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10)
     except subprocess.TimeoutExpired:
         print(Fore.YELLOW + f"{func}: Timeout")
+        return
 
-    except subprocess.CalledProcessError as e:  ## ESBMC execution failed
+    output = (result.stdout or "") + "\n" + (result.stderr or "")
+    status = classify_esbmc_output(output)
 
-        # Filter ESBMC output to get counterexample
-        counterexample = get_counterexample(e.stderr)
+    if status == "success":
+        print(Fore.GREEN + f"{func} ✓")
+        return
 
-        if not os.path.exists("testcase.xml"):
-            print_esbmc_output(func, full_cmd, counterexample)
-            return
+    if status == "error":
+        # ESBMC could not analyze the function (parse/type error, unsupported
+        # construct, internal limitation) -- this is not a counterexample.
+        print(Fore.YELLOW + f"{func} ⚠  ESBMC could not analyze: {get_esbmc_error(output)}")
+        return
 
-        try:
-            # Generate Python file with test case.
-            tc_name = f'test_consensus_{func}.py'
-            # Get argument types for the function
-            python_file = command[-1] # Ensure that the Python file is always the last element in the command
-            arg_types = get_function_arg_types(python_file, func)
+    # status == "failed": a genuine counterexample.
+    counterexample = get_counterexample(output)
 
-            tests_folder = "/tmp/ethcheck"
-            os.makedirs(tests_folder, exist_ok=True)
-            test_file = tests_folder + "/" + tc_name
-            generate_python_script("testcase.xml", func, arg_types, test_file)
+    if not os.path.exists("testcase.xml"):
+        print_esbmc_output(func, full_cmd, counterexample)
+        return
 
-            # Execute test in a child process using Pytest to confirm issue.
-            subprocess.run(['pytest', test_file], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        # Generate Python file with test case.
+        tc_name = f'test_consensus_{func}.py'
+        # Get argument types for the function
+        python_file = command[-1] # Ensure that the Python file is always the last element in the command
+        arg_types = get_function_arg_types(python_file, func)
 
-            # Print verificatin sucessfull when the issue is not confirmed by Pytest
-            print(Fore.GREEN + f"{func} ✓")
+        tests_folder = "/tmp/ethcheck"
+        os.makedirs(tests_folder, exist_ok=True)
+        test_file = tests_folder + "/" + tc_name
+        generate_python_script("testcase.xml", func, arg_types, test_file)
 
-            # Delete passed test
-            if os.path.isfile(test_file):
-              os.remove(test_file)
+        # Execute test in a child process using Pytest to confirm issue.
+        subprocess.run(['pytest', test_file], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-        except ValueError as e:
-            # ESBMC couldn't create a testcase so we just present the counterexample.
-            print_esbmc_output(func, full_cmd, counterexample)
-        except subprocess.CalledProcessError as e:
-            # Issue confirmed by test. Print ESBMC and Pytest logs.
-            print_esbmc_output(func, full_cmd, counterexample)
-            print(Fore.BLUE + f"Pytest command: {e.cmd}\n" + Style.RESET_ALL)
-            print(e.stdout)
-            if os.path.isfile("testcase.xml"):
-              os.remove("testcase.xml")
-            sys.exit(3)
+        # Print verificatin sucessfull when the issue is not confirmed by Pytest
+        print(Fore.GREEN + f"{func} ✓")
+
+        # Delete passed test
+        if os.path.isfile(test_file):
+          os.remove(test_file)
+
+    except ValueError:
+        # ESBMC couldn't create a testcase so we just present the counterexample.
+        print_esbmc_output(func, full_cmd, counterexample)
+    except subprocess.CalledProcessError as e:
+        # Issue confirmed by test. Print ESBMC and Pytest logs.
+        print_esbmc_output(func, full_cmd, counterexample)
+        print(Fore.BLUE + f"Pytest command: {e.cmd}\n" + Style.RESET_ALL)
+        print(e.stdout)
+        if os.path.isfile("testcase.xml"):
+          os.remove("testcase.xml")
+        sys.exit(3)
 
 def main():
     parser = argparse.ArgumentParser()
