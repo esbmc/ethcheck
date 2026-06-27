@@ -1,3 +1,25 @@
+# Minimal SSZ type stand-ins so this consensus-spec excerpt is self-contained
+# and analyzable by ESBMC without importing the full eth2spec package (whose
+# heavy imports — ruamel.yaml, lru, the SSZ/BLS machinery — the Python frontend
+# cannot ingest). The real types are unsigned SSZ integers / byte vectors.
+# NOTE: these stand-ins intentionally carry no SSZ range/wraparound or length
+# invariants (plain int/bytes), so a SUCCESSFUL verdict here is not an
+# overflow- or length-safety proof of the underlying spec function.
+class uint64(int):
+    pass
+
+class uint256(int):
+    pass
+
+class GeneralizedIndex(int):
+    pass
+
+class Slot(uint64):
+    pass
+
+Bytes32 = bytes
+Root = bytes
+
 FINALIZED_ROOT_GINDEX = GeneralizedIndex(105) #70
 CURRENT_SYNC_COMMITTEE_GINDEX = GeneralizedIndex(54) #71
 NEXT_SYNC_COMMITTEE_GINDEX = GeneralizedIndex(55) #72
