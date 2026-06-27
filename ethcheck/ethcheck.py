@@ -32,6 +32,10 @@ def get_esbmc_path(override=None):
             or os.path.join(os.path.dirname(sys.executable), 'esbmc'))
 
 def preflight_check(esbmc_path):
+    # Runs `esbmc --help` once and reuses the output to (a) confirm the binary
+    # runs, (b) check it exposes the Python frontend and current test-case flag,
+    # and (c) extract the version for the banner -- so startup spawns ESBMC just
+    # once instead of also calling --version separately. Returns the version.
     hint = "Use the bundled binary, or set ESBMC_PATH / --esbmc to a compatible build."
 
     if not os.path.isfile(esbmc_path) or not os.access(esbmc_path, os.X_OK):
@@ -45,17 +49,24 @@ def preflight_check(esbmc_path):
         print(f"Error: could not run ESBMC at {esbmc_path}: {exc}\n{hint}")
         sys.exit(4)
 
-    # EthCheck verifies .py files, so ESBMC must expose the Python frontend
-    # (the --python option) and the current test-case flag (--generate-testcase).
+    # EthCheck verifies .py files, so ESBMC must expose the Python frontend and
+    # the current test-case flag. The --python option is emitted in --help only
+    # when ESBMC is built with -DENABLE_PYTHON_FRONTEND=ON (the whole "Python
+    # frontend" option group is #ifdef'd on that flag), so its presence is a
+    # reliable signal -- it is listed verbatim as "--python" in such builds.
     if '--python' not in help_text or '--generate-testcase' not in help_text:
         print(f"Error: ESBMC at {esbmc_path} lacks the Python frontend or is too old.\n"
               "EthCheck needs an ESBMC built with -DENABLE_PYTHON_FRONTEND=ON "
               f"(building from source requires clang/LLVM >= 18).\n{hint}")
         sys.exit(4)
 
-def print_banner(esbmc_path):
+    # ESBMC prints its version in the --help banner ("... ESBMC 8.3.0 ...").
+    match = re.search(r'ESBMC\s+\d[\w.]*', help_text)
+    return match.group(0) if match else 'ESBMC (version unknown)'
+
+def print_banner(esbmc_version):
   print("=======================================\n                ETHCHECK\n=======================================")
-  subprocess.run([esbmc_path, '--version'], check=True)
+  print(esbmc_version)
 
 def get_function_names(file_path):
     with open(file_path, 'r') as file:
@@ -178,9 +189,9 @@ def main():
         python_function = args.function
 
     esbmc_path = get_esbmc_path(args.esbmc)
-    preflight_check(esbmc_path)
+    esbmc_version = preflight_check(esbmc_path)
 
-    print_banner(esbmc_path);
+    print_banner(esbmc_version);
     print(f"Verifying file: {python_file}\n")
 
     #command = [esbmc_path, '--incremental-bmc', '--compact-trace', '--unsigned-overflow-check', '--generate-testcase', python_file]
