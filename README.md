@@ -51,9 +51,27 @@ ethcheck --fork <fork-name>
 
 
 ## ESBMC version
+EthCheck ships a bundled ESBMC binary (installed into `ethcheck_env/bin/esbmc`):
+
 Git hash: 1dffbe270c </br>
 Git tag: consensus-v1 </br>
 MD5: 618f1fd89c399102865f9e366d164cb6 </br>
+
+### Compatibility and using a different ESBMC
+
+EthCheck verifies Python files, so the ESBMC binary it runs **must be built with the
+Python frontend** (`-DENABLE_PYTHON_FRONTEND=ON`). Building ESBMC from source also
+requires **clang/LLVM >= 18** — otherwise the build fails with
+`'clang::CXXMethodDecl' has no member named 'isExplicitObjectMemberFunction'`.
+EthCheck is tested with the bundled binary and with **ESBMC 8.3.0**.
+
+To use a different ESBMC build, either:
+- pass it explicitly: `ethcheck --esbmc /path/to/esbmc ...`
+- set an environment variable: `export ESBMC_PATH=/path/to/esbmc`
+- or replace `ethcheck_env/bin/esbmc` with your binary.
+
+EthCheck runs a preflight check and exits with a clear message if the selected ESBMC
+lacks the Python frontend or is too old.
 
 ## Acknowledgment
 

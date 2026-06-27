@@ -8,17 +8,15 @@ def generate_python_script(xml_file, func_name, arg_types, output_file):
         tree = ET.parse(xml_file)
         root = tree.getroot()
 
-        input_elements = root.findall("./input")
-        if not input_elements:
-            raise ValueError("No <input> nodes are present in the XML file")
-
-        # TODO: Check why ESBMC is adding an extra <input>
-        root.remove(input_elements[0])
-
         inputs = [elem.text for elem in root.findall("./input")]
 
-        if len(inputs) != len(arg_types):
+        # ESBMC versions differ: older builds emit a spurious leading <input>
+        # (so N args -> N+1 inputs), while ESBMC 8.3.0 emits exactly one per
+        # argument. Align by taking the last len(arg_types) inputs, which is
+        # correct for both formats.
+        if len(inputs) < len(arg_types):
             raise ValueError("The number of input nodes does not match the number of argument types")
+        inputs = inputs[len(inputs) - len(arg_types):]
 
         with open(output_file, 'w') as python_script:
             python_script.write(f"from eth2spec.{fork_name} import {module_name} as spec\n")
