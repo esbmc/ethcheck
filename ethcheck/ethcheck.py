@@ -25,12 +25,37 @@ def get_file_path(module_name):
         generate_pytest.module_name = 'spec'
     return resource_path
 
-def get_esbmc_path():
-    return os.path.join(os.path.dirname(sys.executable), 'esbmc')
+def get_esbmc_path(override=None):
+    # Resolution order: explicit override (CLI --esbmc) > $ESBMC_PATH > bundled binary.
+    return (override
+            or os.environ.get('ESBMC_PATH')
+            or os.path.join(os.path.dirname(sys.executable), 'esbmc'))
 
-def print_banner():
+def preflight_check(esbmc_path):
+    hint = "Use the bundled binary, or set ESBMC_PATH / --esbmc to a compatible build."
+
+    if not os.path.isfile(esbmc_path) or not os.access(esbmc_path, os.X_OK):
+        print(f"Error: ESBMC binary not found or not executable: {esbmc_path}\n{hint}")
+        sys.exit(4)
+
+    try:
+        help_text = subprocess.run([esbmc_path, '--help'], stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT, text=True, timeout=30).stdout
+    except (OSError, subprocess.SubprocessError) as exc:
+        print(f"Error: could not run ESBMC at {esbmc_path}: {exc}\n{hint}")
+        sys.exit(4)
+
+    # EthCheck verifies .py files, so ESBMC must expose the Python frontend
+    # (the --python option) and the current test-case flag (--generate-testcase).
+    if '--python' not in help_text or '--generate-testcase' not in help_text:
+        print(f"Error: ESBMC at {esbmc_path} lacks the Python frontend or is too old.\n"
+              "EthCheck needs an ESBMC built with -DENABLE_PYTHON_FRONTEND=ON "
+              f"(building from source requires clang/LLVM >= 18).\n{hint}")
+        sys.exit(4)
+
+def print_banner(esbmc_path):
   print("=======================================\n                ETHCHECK\n=======================================")
-  subprocess.run([get_esbmc_path(), '--version'], check=True)
+  subprocess.run([esbmc_path, '--version'], check=True)
 
 def get_function_names(file_path):
     with open(file_path, 'r') as file:
@@ -119,6 +144,7 @@ def main():
     parser.add_argument('--list-forks', action='store_true', help='List available forks')
     parser.add_argument('--fork', type=str, help='Verify a specific fork')
     parser.add_argument('--function', type=str, help='Verify a specific function')
+    parser.add_argument('--esbmc', type=str, help='Path to the ESBMC binary to use (overrides $ESBMC_PATH and the bundled binary)')
 
     args = parser.parse_args()
 
@@ -151,11 +177,14 @@ def main():
     if args.function:
         python_function = args.function
 
-    print_banner();
+    esbmc_path = get_esbmc_path(args.esbmc)
+    preflight_check(esbmc_path)
+
+    print_banner(esbmc_path);
     print(f"Verifying file: {python_file}\n")
 
-    #command = [get_esbmc_path(), '--incremental-bmc', '--compact-trace', '--unsigned-overflow-check', '--generate-test', python_file]
-    command = [get_esbmc_path(), '--incremental-bmc', '--compact-trace', '--generate-test', python_file]
+    #command = [esbmc_path, '--incremental-bmc', '--compact-trace', '--unsigned-overflow-check', '--generate-testcase', python_file]
+    command = [esbmc_path, '--incremental-bmc', '--compact-trace', '--generate-testcase', python_file]
 
     # Verify a single function
     if python_function:
