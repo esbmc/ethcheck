@@ -3,8 +3,12 @@
 These cover the pure helpers that decide whether an ESBMC run is a success, a
 genuine counterexample, or an error that never reached a verdict -- the bug was
 that errors were reported as counterexamples.
+
+The helpers live in ``ethcheck.classify``, a dependency-free module, so these
+tests never import colorama/pkg_resources/generate_pytest -- a missing runtime
+dependency cannot break classification testing at collection time.
 """
-from ethcheck.ethcheck import classify_esbmc_output, get_esbmc_error, get_counterexample
+from ethcheck.classify import classify_esbmc_output, get_esbmc_error, get_counterexample
 
 SUCCESS = "Solving with solver\nVERIFICATION SUCCESSFUL\n"
 FAILED = "[Counterexample]\nState 1 ...\nVERIFICATION FAILED\nBug found (k = 1)\n"
@@ -35,6 +39,14 @@ def test_failed_takes_precedence_when_both_markers_present():
     # Fail safe: a counterexample must never be masked by a SUCCESSFUL string.
     both = "VERIFICATION SUCCESSFUL\n...\nVERIFICATION FAILED\n"
     assert classify_esbmc_output(both) == "failed"
+
+
+def test_phrase_inside_a_trace_line_is_not_the_verdict():
+    # The verdict is matched as a whole stripped line, not a substring, so a
+    # trace line that merely quotes the phrase must not flip a SUCCESSFUL run to
+    # failed.
+    trace = '  state 3: msg = "VERIFICATION FAILED"\nVERIFICATION SUCCESSFUL\n'
+    assert classify_esbmc_output(trace) == "success"
 
 
 def test_get_counterexample_extracts_from_merged_stdout_stderr():
