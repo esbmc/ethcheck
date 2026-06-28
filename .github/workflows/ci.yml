@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.9', '3.11', '3.12']
+
+    steps:
+      - uses: actions/checkout@v4
+        # The bundled bin/esbmc is a 200 MB git-LFS object; leave it as a
+        # pointer (lfs: false) -- the unit tests do not need it, and the
+        # ESBMC-gated smoke test skips itself when no usable binary is present.
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install colorama pytest ast2json setuptools
+
+      - name: Run tests
+        # Run as `python -m pytest` from the repo root so the ethcheck package
+        # is importable (the current directory is placed on sys.path).
+        run: python -m pytest tests/ -v
