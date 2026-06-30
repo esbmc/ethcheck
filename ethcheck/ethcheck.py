@@ -12,17 +12,21 @@ from generate_pytest import generate_python_script
 from list_forks import list_forks
 import subprocess
 import ast
-import pkg_resources
+import importlib.util
 import argparse
 import generate_pytest
 
 def get_file_path(module_name):
-    mainnet_file = 'mainnet.py'
-    spec_file = 'spec.py'
-    resource_path = pkg_resources.resource_filename(module_name, mainnet_file)
+    # Locate the fork's spec source inside the installed eth2spec package without
+    # importing the fork body. importlib.util.find_spec replaces the removed
+    # pkg_resources.resource_filename (dropped from setuptools >= 81); it only
+    # needs the package directory, so it avoids pulling in the fork's heavy deps.
+    spec = importlib.util.find_spec(module_name)
+    pkg_dir = spec.submodule_search_locations[0]
+    resource_path = os.path.join(pkg_dir, 'mainnet.py')
     generate_pytest.module_name = 'mainnet'
     if not os.path.exists(resource_path):
-        resource_path = pkg_resources.resource_filename(module_name, spec_file)
+        resource_path = os.path.join(pkg_dir, 'spec.py')
         generate_pytest.module_name = 'spec'
     return resource_path
 
