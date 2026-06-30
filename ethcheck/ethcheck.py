@@ -91,33 +91,39 @@ def get_function_arg_types(file_path, func_name):
     return []
 
 def verify_function(func, command):
+    # Returns one of 'success', 'failed', 'error', 'timeout' so the caller can
+    # tally a run summary and choose the process exit code.
     full_cmd = command + ['--function', func]
+    # Clear any testcase.xml left by a previous function so the existence check
+    # below reflects only this run (the batch no longer stops at the first bug).
+    if os.path.isfile("testcase.xml"):
+        os.remove("testcase.xml")
     try:
         # Execute ESBMC in a child process
         result = subprocess.run(full_cmd, check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=10)
     except subprocess.TimeoutExpired:
         print(Fore.YELLOW + f"{func}: Timeout" + Style.RESET_ALL)
-        return
+        return 'timeout'
 
     output = (result.stdout or "") + "\n" + (result.stderr or "")
     status = classify_esbmc_output(output)
 
     if status == "success":
         print(Fore.GREEN + f"{func} ✓" + Style.RESET_ALL)
-        return
+        return 'success'
 
     if status == "error":
         # ESBMC could not analyze the function (parse/type error, unsupported
         # construct, internal limitation) -- this is not a counterexample.
         print(Fore.YELLOW + f"{func} ⚠  ESBMC could not analyze: {get_esbmc_error(output)}" + Style.RESET_ALL)
-        return
+        return 'error'
 
     # status == "failed": a genuine counterexample.
     counterexample = get_counterexample(output)
 
     if not os.path.exists("testcase.xml"):
         print_esbmc_output(func, full_cmd, counterexample)
-        return
+        return 'failed'
 
     try:
         # Generate Python file with test case.
@@ -140,21 +146,51 @@ def verify_function(func, command):
         # Delete passed test
         if os.path.isfile(test_file):
           os.remove(test_file)
+        return 'success'
 
     except ValueError:
         # ESBMC couldn't create a testcase so we just present the counterexample.
         print_esbmc_output(func, full_cmd, counterexample)
+        return 'failed'
     except subprocess.CalledProcessError as e:
         # Issue confirmed by test. Print ESBMC and Pytest logs.
         print_esbmc_output(func, full_cmd, counterexample)
         print(Fore.BLUE + f"Pytest command: {e.cmd}\n" + Style.RESET_ALL)
         print(e.stdout)
-        sys.exit(3)
+        return 'failed'
+    except OSError as exc:
+        # Test confirmation could not run (e.g. pytest missing) -- report the
+        # counterexample but don't abort the rest of the batch.
+        print_esbmc_output(func, full_cmd, counterexample)
+        print(Fore.YELLOW + f"Note: could not run test confirmation: {exc}" + Style.RESET_ALL)
+        return 'failed'
     finally:
         # Always discard the testcase so a stale file never mis-tests a later
         # function (ESBMC only rewrites it when the next run finds a trace).
         if os.path.isfile("testcase.xml"):
             os.remove("testcase.xml")
+
+def summarize(results):
+    return {status: results.count(status)
+            for status in ('success', 'failed', 'error', 'timeout')}
+
+def exit_code_for(counts):
+    # A counterexample (real bug) dominates; otherwise inconclusive results
+    # (ESBMC errors / timeouts) get their own non-zero code so callers can tell
+    # "could not analyze" apart from "all verified".
+    if counts['failed']:
+        return 3
+    if counts['error'] or counts['timeout']:
+        return 5
+    return 0
+
+def print_summary(results):
+    counts = summarize(results)
+    print(f"\nSummary: {counts['success']} ✓ verified, "
+          f"{counts['failed']} ✗ counterexample, "
+          f"{counts['error']} ⚠ could not analyze, "
+          f"{counts['timeout']} timeout")
+    return exit_code_for(counts)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -204,21 +240,23 @@ def main():
     #command = [esbmc_path, '--incremental-bmc', '--compact-trace', '--unsigned-overflow-check', '--generate-testcase', python_file]
     command = [esbmc_path, '--incremental-bmc', '--compact-trace', '--generate-testcase', python_file]
 
-    # Verify a single function
+    # Verify a single function, or all functions in the file.
     if python_function:
-        verify_function(python_function, command)
+        results = [verify_function(python_function, command)]
     else:
-    # Verify all functions
-        function_list = get_function_names(python_file)
-        for func in function_list:
-            verify_function(func, command)
+        results = [verify_function(func, command)
+                   for func in get_function_names(python_file)]
 
     # clean temporary files
     for d in os.listdir("/tmp"):
         if re.match(r"^esbmc-python-astgen-", d):
             shutil.rmtree(f"/tmp/{d}", ignore_errors=True)
 
-    print()
+    if not results:
+        print(f"\nNo functions to verify in {python_file}")
+        sys.exit(0)
+
+    sys.exit(print_summary(results))
 
 if __name__ == "__main__":
     main()
